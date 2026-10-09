@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Turn articles, documents and photos of pages into MP3s read in your own voice.">
+    <!-- The access token lives in this browser, so scripts may only come from this site. The API host is
+         whatever server you pair with, hence https: in connect-src and media-src. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; media-src 'self' blob: https: http://localhost:* http://127.0.0.1:*; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+    <meta name="theme-color" content="#0d0e0c">
+    <meta name="color-scheme" content="dark">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Audioshop">
+    <title>Audioshop | Articles in your own voice</title>
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="preload" href="fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app">
+        <header class="topbar">
+            <div class="brand">
+                <img src="icons/icon.svg" alt="" width="28" height="28">
+                <span>Audioshop</span>
+            </div>
+            <button type="button" class="connection" id="connection" data-state="unknown" aria-label="Connection status">
+                <span class="dot" aria-hidden="true"></span><span id="connectionText">Not connected</span>
+            </button>
+        </header>
+
+        <main id="main">
+            <!-- New ------------------------------------------------------------------- -->
+            <section class="view" id="view-new" aria-labelledby="new-title">
+                <div class="hero">
+                    <p class="eyebrow">Read to me</p>
+                    <h1 id="new-title">Articles, in your own voice.</h1>
+                    <p class="intro">Give it a link, a document or photos of a page. Your computer reads it aloud in your voice and this phone keeps the MP3 for offline listening.</p>
+                </div>
+
+                <div class="panel onboarding" id="onboarding" hidden>
+                    <p class="step-label">First time here</p>
+                    <h2>Connect your computer</h2>
+                    <p class="hint">The voice runs on your own computer; this site is the remote control. On the computer run <code>npm run pair</code> and open the link it prints on this phone, or enter the address and token in Settings.</p>
+                    <button type="button" class="button primary" data-goto="settings">Open Settings</button>
+                </div>
+
+                <form class="panel" id="newForm" novalidate>
+                    <div class="segmented" role="tablist" aria-label="What to read">
+                        <button type="button" role="tab" class="segment active" aria-selected="true" data-mode="link" id="tab-link">Link</button>
+                        <button type="button" role="tab" class="segment" aria-selected="false" data-mode="file" id="tab-file">File or photo</button>
+                        <button type="button" role="tab" class="segment" aria-selected="false" data-mode="text" id="tab-text">Text</button>
+                    </div>
+
+                    <div class="mode" data-mode-panel="link" role="tabpanel" aria-labelledby="tab-link">
+                        <label class="field-label" for="urlInput">Article link</label>
+                        <div class="input-row">
+                            <input type="url" id="urlInput" class="text-input" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://news.example.com/story">
+                            <button type="button" class="button" id="pasteBtn">Paste</button>
+                        </div>
+                        <p class="hint">News stories, blog posts and PDF links. Menus, ads and "related" links are left out.</p>
+                    </div>
+
+                    <div class="mode" data-mode-panel="file" role="tabpanel" aria-labelledby="tab-file" hidden>
+                        <label class="dropzone" for="fileInput" id="dropzone">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+                            <strong>Choose a file or take photos</strong>
+                            <span>PDF, Word, EPUB, text or HTML &middot; several photos become one article, in order</span>
+                        </label>
+                        <input type="file" id="fileInput" multiple accept=".txt,.md,.markdown,.html,.htm,.pdf,.docx,.epub,image/*,.heic,.heif">
+                        <ul class="file-list" id="fileList" aria-live="polite"></ul>
+                    </div>
+
+                    <div class="mode" data-mode-panel="text" role="tabpanel" aria-labelledby="tab-text" hidden>
+                        <label class="field-label" for="textInput">Text to read</label>
+                        <textarea id="textInput" class="text-input" rows="8" placeholder="Paste or type the article here"></textarea>
+                        <p class="hint" id="textCount">0 words</p>
+                    </div>
+
+                    <details class="options">
+                        <summary>Options</summary>
+                        <label class="field-label" for="titleInput">Title (optional)</label>
+                        <input type="text" id="titleInput" class="text-input" maxlength="200" placeholder="Taken from the article if left empty">
+                        <label class="field-label" for="voiceSelect">Voice</label>
+                        <select id="voiceSelect" class="text-input"></select>
+                        <label class="toggle"><input type="checkbox" id="readTitle" checked> <span>Read the title aloud first</span></label>
+                    </details>
+
+                    <p class="estimate" id="estimate" aria-live="polite"></p>
+                    <button type="submit" class="button primary big" id="makeBtn">Make audio</button>
+                    <p class="form-error" id="formError" role="alert" hidden></p>
+                </form>
+            </section>
+
+            <!-- Library --------------------------------------------------------------- -->
+            <section class="view" id="view-library" aria-labelledby="library-title" hidden>
+                <div class="section-heading">
+                    <div>
+                        <p class="step-label">Your recordings</p>
+                        <h2 id="library-title">Library</h2>
+                    </div>
+                    <button type="button" class="text-button" id="refreshBtn">Refresh</button>
+                </div>
+                <p class="notice" id="offlineNotice" hidden>Offline: showing the audio saved on this phone.</p>
+                <ul class="job-list" id="jobList" aria-live="polite"></ul>
+                <div class="empty" id="libraryEmpty" hidden>
+                    <p>Nothing here yet.</p>
+                    <button type="button" class="button primary" data-goto="new">Make your first audio</button>
+                </div>
+            </section>
+
+            <!-- Settings -------------------------------------------------------------- -->
+            <section class="view" id="view-settings" aria-labelledby="settings-title" hidden>
+                <div class="section-heading">
+                    <div>
+                        <p class="step-label">This phone</p>
+                        <h2 id="settings-title">Settings</h2>
+                    </div>
+                </div>
+
+                <form class="panel" id="serverForm" novalidate>
+                    <h3>Your computer</h3>
+                    <label class="field-label" for="serverInput">Server address</label>
+                    <input type="url" id="serverInput" class="text-input" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://computer.your-tailnet.ts.net">
+                    <label class="field-label" for="tokenInput">Access token</label>
+                    <div class="input-row">
+                        <input type="password" id="tokenInput" class="text-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="From npm run setup">
+                        <button type="button" class="button" id="showToken" aria-pressed="false">Show</button>
+                    </div>
+                    <button type="submit" class="button primary" id="connectBtn">Connect</button>
+                    <div class="server-status" id="serverStatus" aria-live="polite"></div>
+                </form>
+
+                <div class="panel">
+                    <h3>Listening</h3>
+                    <label class="toggle"><input type="checkbox" id="autoSave" checked> <span>Save finished audio on this phone (for offline listening)</span></label>
+                    <label class="toggle"><input type="checkbox" id="notifyDone"> <span>Notify me when audio is ready</span></label>
+                </div>
+
+                <div class="panel">
+                    <h3>Storage on this phone</h3>
+                    <p class="hint" id="storageInfo">&nbsp;</p>
+                    <div class="button-row">
+                        <button type="button" class="button" id="clearAudio">Remove saved audio</button>
+                        <button type="button" class="button danger" id="forgetServer">Disconnect</button>
+                    </div>
+                </div>
+
+                <div class="panel" id="installPanel">
+                    <h3>Put it on your home screen</h3>
+                    <p class="hint" id="installHint">iPhone: tap Share, then <strong>Add to Home Screen</strong>. Android: open the browser menu and choose <strong>Install app</strong>.</p>
+                    <button type="button" class="button" id="installBtn" hidden>Install Audioshop</button>
+                </div>
+
+                <p class="about">Audioshop <span id="appVersion"></span> &middot; MP3s are tagged as AI-generated speech. Your recordings, voice and model stay on your computer; this site stores only your settings and saved MP3s, in this browser.</p>
+            </section>
+        </main>
+
+        <!-- Player ------------------------------------------------------------------- -->
+        <div class="player" id="player" hidden>
+            <audio id="audio" preload="metadata"></audio>
+            <div class="player-row">
+                <div class="player-title" id="playerTitle"></div>
+                <button type="button" class="speed" id="speedBtn" aria-label="Playback speed">1&times;</button>
+            </div>
+            <input type="range" id="seek" class="seek" min="0" max="1000" value="0" aria-label="Position">
+            <div class="player-row">
+                <span class="time" id="timeNow">0:00</span>
+                <div class="transport">
+                    <button type="button" class="icon-button" id="back15" aria-label="Back 15 seconds">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9l5 4M6 9h8a5 5 0 1 1 0 10h-2"/></svg><span>15</span>
+                    </button>
+                    <button type="button" class="icon-button play" id="playBtn" aria-label="Play">
+                        <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                        <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+                    </button>
+                    <button type="button" class="icon-button" id="fwd30" aria-label="Forward 30 seconds">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13 5 5 4-5 4m5-4h-8a5 5 0 1 0 0 10h2"/></svg><span>30</span>
+                    </button>
+                </div>
+                <span class="time" id="timeLeft">-0:00</span>
+            </div>
+        </div>
+
+        <nav class="tabbar" aria-label="Sections">
+            <button type="button" class="tab active" data-goto="new" aria-current="page">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>New</span>
+            </button>
+            <button type="button" class="tab" data-goto="library">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Library</span><b class="badge" id="activeBadge" hidden></b>
+            </button>
+            <button type="button" class="tab" data-goto="settings">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings</span>
+            </button>
+        </nav>
+
+        <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    </div>
+    <script src="app.js" defer></script>
+</body>
+</html>

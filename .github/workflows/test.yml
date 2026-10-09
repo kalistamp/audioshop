@@ -1,0 +1,27 @@
+# Runs every test without the voice model: the API and browser tests use stand-in engines, and the
+# extractor tests generate their own documents and photos.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - uses: astral-sh/setup-uv@v10
+      - run: npm ci
+      - run: npm run setup  # extractor environment and the checksummed OCR model
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - run: npm run test:extractor

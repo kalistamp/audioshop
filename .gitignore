@@ -1,0 +1,18 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Your library: uploads, extracted text, MP3s, the job database and voice profiles.
+data/
+
+# Python environment for the extractor
+extractor/.venv/
+__pycache__/
+.pytest_cache/
+
+# Test output (screenshots)
+tests/artifacts/
+
+*.log
+.DS_Store

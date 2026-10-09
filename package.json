@@ -1,0 +1,25 @@
+{
+  "name": "audioshop",
+  "version": "1.0.0",
+  "description": "Turn articles, documents and photos of pages into MP3s read in your own voice.",
+  "main": "server.js",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "setup": "node scripts/setup.js",
+    "pair": "node scripts/pair.js",
+    "test": "node --test \"tests/*.test.cjs\"",
+    "test:extractor": "cd extractor && uv run --group dev pytest -q"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}
